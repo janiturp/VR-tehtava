@@ -25,9 +25,8 @@ namespace Valve.VR.Extras
         public event PointerEventHandler PointerClick;
         public event PointerEventHandler PointerDown;
         public event PointerEventHandler PointerUp;
-        //public bool grabbingObject = false;
 
-        // Added
+        // Added by Jani
         bool isDown = false;
         public Ray CurrentRayR;
         public Ray CurrentRayL;
@@ -37,6 +36,7 @@ namespace Valve.VR.Extras
         public float comparedControllerAngleL = 0.0f;
         public GameObject rightHand;
         public GameObject leftHand;
+        // End
 
         Transform previousContact = null;
 
@@ -84,19 +84,6 @@ namespace Valve.VR.Extras
             newMaterial.SetColor("_Color", color);
             pointer.GetComponent<MeshRenderer>().material = newMaterial;
 
-            //if (pose.name == "RightHand")
-            //{
-            //    rightHand = GameObject.Find("HandColliderRight(Clone)");
-
-            //}
-            //else if (pose.name == "LeftHand")
-            //{
-            //    leftHand = GameObject.Find("HandColliderLeft(Clone)");
-            //}
-
-            //rightHand = GameObject.Find("HandColliderRight(Clone)");
-            //leftHand = GameObject.Find("HandColliderLeft(Clone)");
-
         }
 
         public virtual void OnPointerIn(PointerEventArgs e)
@@ -104,18 +91,19 @@ namespace Valve.VR.Extras
             if (PointerIn != null)
                 PointerIn(this, e);
 
+            // Added by Jani
+            // Check if either hand's laser targets Grabbable object. rightHandRayLockGo keeps track of the targeted object.
             if (e.fromInputSource == SteamVR_Input_Sources.RightHand && e.target.CompareTag("Grab") && rightHand != null)
             {
                 rightHandRayLockGo = e.target.gameObject;
                 comparedControllerAngleR = rightHand.transform.eulerAngles.x;
-                //comparedControllerAngleR = rightHand.transform.rotation.z;
             }
             else if (e.fromInputSource == SteamVR_Input_Sources.LeftHand && e.target.CompareTag("Grab") && leftHand != null)
             {
-                //Debug.Log("LEft laser enter");
                 leftHandRayLockGo = e.target.gameObject;
                 comparedControllerAngleL = leftHand.transform.eulerAngles.x;
             }
+            // End
         }
 
         public virtual void OnPointerClick(PointerEventArgs e)
@@ -130,6 +118,8 @@ namespace Valve.VR.Extras
             if (PointerOut != null)
                 PointerOut(this, e);
 
+
+            // Added by Jani. Checks if LaserPointer's Ray moves away from grabbable object.
             comparedControllerAngleR = 0.0f;
             comparedControllerAngleL = 0.0f;
 
@@ -144,7 +134,7 @@ namespace Valve.VR.Extras
             }
         }
 
-        // Added
+        // Added by Jani. Ended up being useless.
         public virtual void OnPointerDown(PointerEventArgs e)
         {
             if (PointerDown != null)
@@ -154,7 +144,7 @@ namespace Valve.VR.Extras
 
         }
 
-        // Added
+        // Added by Jani. Ended up being useless.
         public virtual void OnPointerUp(PointerEventArgs e)
         {
             if (PointerUp != null)
@@ -174,8 +164,13 @@ namespace Valve.VR.Extras
             float dist = 100f;
 
             Ray raycast = new Ray(transform.position, transform.forward);
+
+            // Added and modified by Jani
+            // Raycasts for left and right hand.
             CurrentRayR = raycast;
             CurrentRayL = raycast;
+            // End
+
             RaycastHit hit;
             bool bHit = Physics.Raycast(raycast, out hit);
 
@@ -208,19 +203,6 @@ namespace Valve.VR.Extras
                 dist = hit.distance;
             }
 
-            // Kokeilua saada grip toimimaan objektien kanssa. Obsolete, grippiä ei tarvinnut juurikaan vielä.
-            //if (gripObject != null && gripObject.GetState(pose.inputSource) && !grabbingObject)
-            //{
-            //    if(hit.transform.CompareTag("Grab"))
-            //    {
-            //    Debug.Log("Gripped object.");
-            //    grabbingObject = true;
-            //        hit.transform.position;
-            //    }
-            //    grabbingObject = false;
-            //}
-
-
             if (bHit && interactWithUI.GetStateUp(pose.inputSource))
             {
                 PointerEventArgs argsClick = new PointerEventArgs();
@@ -238,7 +220,7 @@ namespace Valve.VR.Extras
                 pointer.transform.localScale = new Vector3(thickness * 5f, thickness * 5f, dist);
                 pointer.GetComponent<MeshRenderer>().material.color = clickColor;
 
-                // Added
+                // Added by Jani. Ended up being useless.
                 if (!isDown)
                 {
                     isDown = true;
@@ -258,11 +240,11 @@ namespace Valve.VR.Extras
             pointer.transform.localPosition = new Vector3(0f, 0f, dist / 2f);
         }
 
+        // Everything inside FixedUpdate was added by Jani.
         private void FixedUpdate()
         {
-            //Debug.Log(rightHand.transform.rotation.x);
-            //Debug.Log(rightHandRayLockGo);
-            //Debug.Log(rightHand.transform.eulerAngles);
+            // Check the angle of hand. If hand is moved in a correct way, targeted grabbable object's position is changed
+            // to the end of ray in 4.7f distance. Arbritray distance chosen.
             if (rightHandRayLockGo != null && rightHand.transform.eulerAngles.x >= comparedControllerAngleR + 30.0f)
             {
                 Ray ray = GetComponent<SteamVR_LaserPointer>().CurrentRayR;
@@ -270,13 +252,15 @@ namespace Valve.VR.Extras
                 rightHandRayLockGo.transform.position = pos;
 
             }
+            // If hand's angle moves to the opposite direction of the if-sentence, the targeted grabbable object
+            // is dropped and untargeted.
             else if (rightHandRayLockGo && rightHand.transform.eulerAngles.x <= comparedControllerAngleR - 30.0f)
             {
-                //Debug.Log("Grip let go");
                 rightHandRayLockGo.transform.position = rightHandRayLockGo.transform.position;
                 rightHandRayLockGo = null;
             }
 
+            // Same as above, but for left hand.
             if (leftHandRayLockGo != null && leftHand.transform.eulerAngles.x >= comparedControllerAngleL + 30.0f)
             {
                 Ray ray = GetComponent<SteamVR_LaserPointer>().CurrentRayL;
@@ -286,7 +270,6 @@ namespace Valve.VR.Extras
             }
             else if (leftHandRayLockGo && leftHand.transform.eulerAngles.x <= comparedControllerAngleL - 30.0f)
             {
-                //Debug.Log("Grip let go");
                 leftHandRayLockGo.transform.position = leftHandRayLockGo.transform.position;
                 leftHandRayLockGo = null;
             }
